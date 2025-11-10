@@ -1,9 +1,9 @@
 import { StrictMode } from "react"
 import { createRoot } from "react-dom/client"
 import { PannaProvider } from "panna-sdk/react";
+import "panna-sdk/styles.css";
 import App from "./App.tsx"
 import "./index.css"
-import "panna-sdk/styles.css";
 
 createRoot(document.getElementById("root")!).render(
     <StrictMode>
