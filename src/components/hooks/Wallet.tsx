@@ -4,6 +4,8 @@ import { useAccount, useDisconnect, useWriteContract, useWaitForTransactionRecei
 import { voting } from "../../config/voting.ts";
 import { TransactionState } from "../elements/types.ts";
 
+type Address = `0x${string}`;
+
 export interface Transaction {
     state: TransactionState;
     txHash?: string;
@@ -34,7 +36,7 @@ export function useWallet(): Wallet {
         if (!isPending) {
             setCastVoteState({ state: TransactionState.WAITING_SIGNATURE });
             writeContract({
-                address: voting.CONTRACT_ADDRESS,
+                address: voting.CONTRACT_ADDRESS as Address,
                 abi: voting.CONTRACT_ABI,
                 functionName: "castVote",
                 args: [pollIndex, optionIndex],
