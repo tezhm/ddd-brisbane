@@ -1,4 +1,5 @@
 import { type Chain, getDefaultConfig } from "@rainbow-me/rainbowkit";
+import { webSocket } from "viem";
 
 export const liskSepoliaChain = {
     id: 4202,
@@ -7,11 +8,11 @@ export const liskSepoliaChain = {
     rpcUrls: {
         default: {
             http: ["https://rpc.sepolia-api.lisk.com"],
-            webSocket: ["wss://rpc.sepolia-ws.lisk.com"],
+            webSocket: ["wss://ws.sepolia-api.lisk.com"],
         },
         public: {
             http: ["https://rpc.sepolia-api.lisk.com"],
-            webSocket: ["wss://rpc.sepolia-ws.lisk.com"],
+            webSocket: ["wss://ws.sepolia-api.lisk.com"],
         },
     },
     blockExplorers: {
@@ -28,4 +29,7 @@ export const liskSepoliaConfig = getDefaultConfig({
     projectId: "16ffdea546df204f88f890e448595333",
     appUrl: "https://sepolia-blockscout.lisk.com",
     chains: [liskSepoliaChain],
+    transports: {
+        [liskSepoliaChain.id]: webSocket(liskSepoliaChain.rpcUrls.default.webSocket[0]),
+    },
 });
