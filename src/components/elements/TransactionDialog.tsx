@@ -1,5 +1,6 @@
 import React from "react";
 import { Check, CircleAlert, CircleCheckBig, ExternalLink, LoaderCircle, X } from "lucide-react";
+import { liskSepoliaChain } from "../../config/lisk.ts";
 import { TransactionState } from "./types.ts";
 
 interface TransactionDialogProps {
@@ -44,7 +45,7 @@ const getExplorerUrl = (txHash?: string|null): string|null => {
         return null;
     }
 
-    return `https://sepolia-blockscout.lisk.com/tx/${txHash}`;
+    return `${liskSepoliaChain.blockExplorers.default.url}/tx/${txHash}`;
 };
 
 const getStateContent = (

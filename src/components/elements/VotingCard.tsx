@@ -2,7 +2,7 @@ import React, { useEffect, useRef } from "react";
 import lottie from "lottie-web";
 
 export interface Option {
-    optionId: number;
+    optionIndex: number;
     title: string;
     description: string;
     lottieUrl: any;
@@ -12,7 +12,7 @@ export interface VotingCardProps {
     option: Option;
     hasVoted: boolean;
     votedOption: number|null;
-    onVote: (optionId: number) => void;
+    onVote: (optionIndex: number) => void;
 }
 
 export const VotingCard: React.FC<VotingCardProps> = ({ option, hasVoted, votedOption, onVote }: VotingCardProps) => {
@@ -50,17 +50,17 @@ export const VotingCard: React.FC<VotingCardProps> = ({ option, hasVoted, votedO
                     {option.description}
                 </p>
                 <button
-                    onClick={() => onVote(option.optionId)}
+                    onClick={() => onVote(option.optionIndex)}
                     disabled={hasVoted}
                     className={`w-full py-3 px-4 rounded-lg font-semibold transition-all duration-300 ${
-                        votedOption === option.optionId
+                        votedOption === option.optionIndex
                             ? "bg-purple-600 text-white cursor-default"
                             : hasVoted
                                 ? "bg-gray-300 text-gray-500 cursor-not-allowed opacity-50"
                                 : "bg-green-500 hover:bg-green-600 text-white hover:scale-105 active:scale-95"
                     }`}
                 >
-                    {votedOption === option.optionId ? "✓ Voted" : `Vote for ${option.title}`}
+                    {votedOption === option.optionIndex ? "✓ Voted" : `Vote for ${option.title}`}
                 </button>
             </div>
         </div>

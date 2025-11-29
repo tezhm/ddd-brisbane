@@ -1,10 +1,9 @@
 import { useEffect, useState } from "react";
-import { useActiveWallet, useLogout } from "panna-sdk/react";
+import { transaction, chain } from "panna-sdk/core";
+import { useActiveWallet, useLogout, usePanna } from "panna-sdk/react";
 import { useAccount, useDisconnect, useWriteContract, useWaitForTransactionReceipt } from "wagmi";
 import { voting } from "../../config/voting.ts";
-import { TransactionState } from "../elements/types.ts";
-
-type Address = `0x${string}`;
+import { type Address, TransactionState } from "../elements/types.ts";
 
 export interface Transaction {
     state: TransactionState;
@@ -21,19 +20,41 @@ export interface Wallet {
 
 export function useWallet(): Wallet {
     const pannaWallet = useActiveWallet();
+    const pannaClient = usePanna();
     const { disconnect: pannaDisconnect } = useLogout();
-    const { data: txHash, isPending, writeContract, error: writeError } = useWriteContract();
+    const [txHash, setTxHash] = useState<Address|undefined>(undefined);
+    const { data, isPending, writeContract, error: writeError } = useWriteContract();
     const { isSuccess: isConfirmed, isError: isReceiptError, error: receiptError } = useWaitForTransactionReceipt({ hash: txHash });
     const { isConnected, address } = useAccount();
     const { disconnect: wagmiDisconnect } = useDisconnect();
     const [castVoteState, setCastVoteState] = useState<Transaction|null>(null);
 
-    const castVote = (pollIndex: number, optionIndex: number) => {
+    const castVote = async (pollIndex: number, optionIndex: number) => {
         if (!!pannaWallet) {
-            return;
+            const account = pannaWallet.getAccount();
+
+            if (!account) {
+                return;
+            }
+
+            try {
+                setCastVoteState({ state: TransactionState.WAITING_SIGNATURE });
+                const tx = transaction.prepareContractCall({
+                    client: pannaClient.client,
+                    chain: chain.liskSepolia,
+                    address: voting.CONTRACT_ADDRESS as Address,
+                    method: "function castVote(uint pollIndex, uint optionIndex)",
+                    params: [pollIndex, optionIndex],
+                });
+                const result = await transaction.sendTransaction({ account, transaction: tx });
+                setTxHash(result.transactionHash);
+            } catch (error) {
+                setCastVoteState({ state: TransactionState.ERROR, error: "Transaction failed" });
+                console.log(error);
+            }
         }
 
-        if (!isPending) {
+        if (isConnected && !isPending) {
             setCastVoteState({ state: TransactionState.WAITING_SIGNATURE });
             writeContract({
                 address: voting.CONTRACT_ADDRESS as Address,
@@ -53,6 +74,14 @@ export function useWallet(): Wallet {
             wagmiDisconnect();
         }
     };
+
+    useEffect(() => {
+        if (!data) {
+            return;
+        }
+
+        setTxHash(data);
+    }, [data]);
 
     useEffect(() => {
         if (!txHash) {
