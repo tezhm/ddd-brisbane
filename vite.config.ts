@@ -8,6 +8,7 @@ export default defineConfig({
         react(),
         tailwindcss(),
     ],
+    base: "/ddd-brisbane",
     server: {
         port: 3000,
         allowedHosts: ["local.rgblisk.io", "rgblisk.io"],
