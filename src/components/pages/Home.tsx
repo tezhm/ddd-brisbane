@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react"
+import React, { useCallback, useEffect, useRef, useState } from "react"
 import { getAbiItem } from "viem";
 import { useReadContract, usePublicClient, useWatchContractEvent } from "wagmi";
 import AOS from "aos";
@@ -7,7 +7,7 @@ import inflatableLottie from "../../assets/inflatable-tube-man.json";
 import llamaLottie from "../../assets/llama.json";
 import triangleLottie from "../../assets/triangle-man.json";
 import { voting } from "../../config/voting.ts";
-import { ConnectWallet } from "../elements/ConnectWallet.tsx";
+import { ConnectWallet, type ConnectWalletHandle } from "../elements/ConnectWallet.tsx";
 import { VotingResults } from "../elements/VotingResults.tsx";
 import { type Option, VotingCard } from "../elements/VotingCard.tsx";
 import { type VoteEvent, VotingTimeline } from "../elements/VotingTimeline.tsx";
@@ -24,6 +24,7 @@ export const Home: React.FC = () => {
     const [hasVoted, setHasVoted] = useState<boolean>(false);
     const [votedOption, setVotedOption] = useState<number|null>(null);
     const [castingVote, setCastingVote] = useState(false);
+    const connectRef = useRef<ConnectWalletHandle>(null);
     const publicClient = usePublicClient();
     const { address, castVote, castVoteState } = useWallet();
     const { data: poll, isPending, error } = useReadContract({
@@ -188,7 +189,7 @@ export const Home: React.FC = () => {
         }
 
         if (!address) {
-            // TODO: open the login dialog
+            connectRef?.current?.openModal();
             return;
         }
 
