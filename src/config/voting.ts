@@ -23,6 +23,17 @@ export const voting = {
         {
             "inputs": [
                 {
+                    "internalType": "string",
+                    "name": "title",
+                    "type": "string"
+                }
+            ],
+            "name": "DuplicateOption",
+            "type": "error"
+        },
+        {
+            "inputs": [
+                {
                     "internalType": "uint256",
                     "name": "pollIndex",
                     "type": "uint256"
@@ -37,6 +48,16 @@ export const voting = {
             "type": "error"
         },
         {
+            "inputs": [],
+            "name": "NoOptions",
+            "type": "error"
+        },
+        {
+            "inputs": [],
+            "name": "NoTitle",
+            "type": "error"
+        },
+        {
             "inputs": [
                 {
                     "internalType": "uint256",
@@ -45,7 +66,7 @@ export const voting = {
                 },
                 {
                     "internalType": "uint256",
-                    "name": "creator",
+                    "name": "optionIndex",
                     "type": "uint256"
                 }
             ],
@@ -72,6 +93,11 @@ export const voting = {
                 }
             ],
             "name": "PollDoesNotExist",
+            "type": "error"
+        },
+        {
+            "inputs": [],
+            "name": "TooManyOptions",
             "type": "error"
         },
         {
@@ -224,6 +250,35 @@ export const voting = {
                     "type": "tuple[]"
                 },
                 {
+                    "internalType": "bool",
+                    "name": "isOpen",
+                    "type": "bool"
+                }
+            ],
+            "stateMutability": "view",
+            "type": "function"
+        },
+        {
+            "inputs": [
+                {
+                    "internalType": "uint256",
+                    "name": "pollIndex",
+                    "type": "uint256"
+                },
+                {
+                    "internalType": "uint256",
+                    "name": "offset",
+                    "type": "uint256"
+                },
+                {
+                    "internalType": "uint256",
+                    "name": "limit",
+                    "type": "uint256"
+                }
+            ],
+            "name": "getVotes",
+            "outputs": [
+                {
                     "components": [
                         {
                             "internalType": "address",
@@ -237,13 +292,46 @@ export const voting = {
                         }
                     ],
                     "internalType": "struct Voting.Vote[]",
-                    "name": "votes",
+                    "name": "",
                     "type": "tuple[]"
-                },
+                }
+            ],
+            "stateMutability": "view",
+            "type": "function"
+        },
+        {
+            "inputs": [
                 {
-                    "internalType": "bool",
-                    "name": "isOpen",
-                    "type": "bool"
+                    "internalType": "uint256",
+                    "name": "pollIndex",
+                    "type": "uint256"
+                }
+            ],
+            "name": "getVotesCount",
+            "outputs": [
+                {
+                    "internalType": "uint256",
+                    "name": "",
+                    "type": "uint256"
+                }
+            ],
+            "stateMutability": "view",
+            "type": "function"
+        },
+        {
+            "inputs": [
+                {
+                    "internalType": "uint256",
+                    "name": "pollIndex",
+                    "type": "uint256"
+                }
+            ],
+            "name": "getVotesTotal",
+            "outputs": [
+                {
+                    "internalType": "uint256[]",
+                    "name": "",
+                    "type": "uint256[]"
                 }
             ],
             "stateMutability": "view",
