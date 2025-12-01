@@ -1,4 +1,4 @@
-import React, { forwardRef, useImperativeHandle, useLayoutEffect, useRef, useState } from "react";
+import { forwardRef, useImperativeHandle, useLayoutEffect, useRef, useState } from "react";
 import { ConnectButton } from "panna-sdk/react";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 import { useWallet } from "../hooks/Wallet.tsx";
@@ -8,7 +8,7 @@ export type ConnectWalletHandle = {
     closeModal: () => void;
 };
 
-export const ConnectWallet: React.FC = forwardRef<ConnectWalletHandle>((_, ref) => {
+export const ConnectWallet = forwardRef<ConnectWalletHandle>((_, ref) => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const container = useRef<HTMLDivElement>(null);
     const [connectButton, setConnectButton] = useState<HTMLButtonElement|null>(null);

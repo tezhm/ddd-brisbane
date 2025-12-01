@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { transaction, chain } from "panna-sdk/core";
-import { useActiveWallet, useLogout, usePanna } from "panna-sdk/react";
+import { useActiveWallet, useLogout, usePanna, useActiveAccount } from "panna-sdk/react";
 import { useAccount, useDisconnect, useWriteContract, useWaitForTransactionReceipt } from "wagmi";
 import { voting } from "../../config/voting.ts";
 import { type Address, TransactionState } from "../elements/types.ts";
@@ -19,15 +19,19 @@ export interface Wallet {
 }
 
 export function useWallet(): Wallet {
-    const pannaWallet = useActiveWallet();
-    const pannaClient = usePanna();
-    const { disconnect: pannaDisconnect } = useLogout();
-    const [txHash, setTxHash] = useState<Address|undefined>(undefined);
-    const { data, isPending, writeContract, error: writeError } = useWriteContract();
-    const { isSuccess: isConfirmed, isError: isReceiptError, error: receiptError } = useWaitForTransactionReceipt({ hash: txHash });
-    const { isConnected, address } = useAccount();
-    const { disconnect: wagmiDisconnect } = useDisconnect();
+    const [address, setAddress] = useState<string|null>(null);
     const [castVoteState, setCastVoteState] = useState<Transaction|null>(null);
+    const [txHash, setTxHash] = useState<Address|undefined>(undefined);
+    // Panna hooks
+    const pannaWallet = useActiveWallet();
+    const { client: pannaClient } = usePanna();
+    const pannaAccount = useActiveAccount();
+    const { disconnect: pannaDisconnect } = useLogout();
+    // Wagmi hooks
+    const { data: wagmiWriteTx, isPending: wagmiWriteIsPending, writeContract: wagmiWriteContract, error: wagmiWriteError } = useWriteContract();
+    const { isSuccess: wagmiTxSuccess, isError: wagmiTxIsError, error: wagmiTxError } = useWaitForTransactionReceipt({ hash: txHash });
+    const { isConnected: wagmiIsConnected, address: wagmiAddress } = useAccount();
+    const { disconnect: wagmiDisconnect } = useDisconnect();
 
     const castVote = async (pollIndex: number, optionIndex: number) => {
         if (!!pannaWallet) {
@@ -40,7 +44,7 @@ export function useWallet(): Wallet {
             try {
                 setCastVoteState({ state: TransactionState.WAITING_SIGNATURE });
                 const tx = transaction.prepareContractCall({
-                    client: pannaClient.client,
+                    client: pannaClient,
                     chain: chain.liskSepolia,
                     address: voting.CONTRACT_ADDRESS as Address,
                     method: "function castVote(uint pollIndex, uint optionIndex)",
@@ -54,9 +58,9 @@ export function useWallet(): Wallet {
             }
         }
 
-        if (isConnected && !isPending) {
+        if (wagmiIsConnected && !wagmiWriteIsPending) {
             setCastVoteState({ state: TransactionState.WAITING_SIGNATURE });
-            writeContract({
+            wagmiWriteContract({
                 address: voting.CONTRACT_ADDRESS as Address,
                 abi: voting.CONTRACT_ABI,
                 functionName: "castVote",
@@ -70,18 +74,18 @@ export function useWallet(): Wallet {
             pannaDisconnect(pannaWallet);
         }
 
-        if (isConnected) {
+        if (wagmiIsConnected) {
             wagmiDisconnect();
         }
     };
 
     useEffect(() => {
-        if (!data) {
+        if (!wagmiWriteTx) {
             return;
         }
 
-        setTxHash(data);
-    }, [data]);
+        setTxHash(wagmiWriteTx);
+    }, [wagmiWriteTx]);
 
     useEffect(() => {
         if (!txHash) {
@@ -92,37 +96,41 @@ export function useWallet(): Wallet {
     }, [txHash]);
 
     useEffect(() => {
-        if (isConfirmed) {
+        if (wagmiTxSuccess) {
             setCastVoteState((currentState) => ({
                 state: TransactionState.SUCCESS,
                 txHash: currentState?.txHash,
             }));
         }
-    }, [isConfirmed]);
+    }, [wagmiTxSuccess]);
 
     useEffect(() => {
-        if (writeError) {
+        if (wagmiWriteError) {
             setCastVoteState({
                 state: TransactionState.ERROR,
-                error: writeError.message.includes("User rejected") ? "Transaction rejected" : "Transaction failed",
+                error: wagmiWriteError.message.includes("User rejected") ? "Transaction rejected" : "Transaction failed",
             });
-            console.error(writeError);
+            console.error(wagmiWriteError);
         }
-    }, [writeError]);
+    }, [wagmiWriteError]);
 
     useEffect(() => {
-        if (isReceiptError) {
+        if (wagmiTxIsError) {
             setCastVoteState((currentState) => ({
                 state: TransactionState.ERROR,
                 txHash: currentState?.txHash,
-                error: receiptError?.message ?? "Transaction failed",
+                error: wagmiTxError?.message ?? "Transaction failed",
             }));
-            console.error(receiptError);
+            console.error(wagmiTxError);
         }
-    }, [isReceiptError, receiptError]);
+    }, [wagmiTxIsError, wagmiTxError]);
+
+    useEffect(() => {
+        setAddress(pannaAccount?.address ?? wagmiAddress ?? null);
+    }, [pannaAccount, wagmiAddress]);
 
     return {
-        address: pannaWallet?.getAccount()?.address ?? address ?? null,
+        address,
         castVote,
         logout,
         castVoteState,

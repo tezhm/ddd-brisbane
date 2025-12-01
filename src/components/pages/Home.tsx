@@ -24,6 +24,7 @@ export const Home: React.FC = () => {
     const [hasVoted, setHasVoted] = useState<boolean>(false);
     const [votedOption, setVotedOption] = useState<number|null>(null);
     const [castingVote, setCastingVote] = useState(false);
+    const [pendingVote, setPendingVote] = useState<number|null>(null);
     const connectRef = useRef<ConnectWalletHandle>(null);
     const publicClient = usePublicClient();
     const { address, castVote, castVoteState } = useWallet();
@@ -60,13 +61,6 @@ export const Home: React.FC = () => {
     };
 
     useEffect(() => {
-        if (!address) {
-            setHasVoted(false);
-            setVotedOption(null);
-        }
-    }, [address]);
-
-    useEffect(() => {
         if (isPending || error || !poll || title) {
             return;
         }
@@ -85,18 +79,11 @@ export const Home: React.FC = () => {
                 acc[optionIndex] = 0;
             }
 
-            if (address?.toLowerCase() === current.voter.toLowerCase()) {
-                console.log("found it")
-                console.log(optionIndex)
-                setHasVoted(true);
-                setVotedOption(optionIndex);
-            }
-
             acc[optionIndex] += 1;
             return acc;
         }, {}));
         setVotingOpen(poll[4]);
-    }, [poll, isPending, error, address]);
+    }, [isPending, error, poll, title, address]);
 
     const fetchVoteEvents = useCallback(async () => {
         if (!publicClient) {
@@ -131,7 +118,7 @@ export const Home: React.FC = () => {
                 events.push({
                     timestamp: Number(event.blockTimestamp) * 1000,
                     optionIndex: Number(event.args.optionIndex),
-                    address: event.address,
+                    address: event.args.voter,
                 });
             }
         }
@@ -142,6 +129,50 @@ export const Home: React.FC = () => {
     useEffect(() => {
         fetchVoteEvents();
     }, [fetchVoteEvents]);
+
+    const handleVote = (optionIndex: number) => {
+        if (hasVoted) {
+            alert("You have already voted!");
+            return;
+        }
+
+        if (!address) {
+            connectRef?.current?.openModal();
+            setPendingVote(optionIndex);
+            return;
+        }
+
+        setCastingVote(true);
+        castVote(voting.CONTRACT_POLL, optionIndex);
+        setPendingVote(null);
+    };
+
+    useEffect(() => {
+        if (!address) {
+            setHasVoted(false);
+            setVotedOption(null);
+            return;
+        }
+
+        if (!events) {
+            return;
+        }
+
+        const addressFormatted = address.toLowerCase();
+
+        // Deriving vote of current account from just events (could also use the poll result)
+        for (const event of events) {
+            if (event.address.toLowerCase() === addressFormatted) {
+                setHasVoted(true);
+                setVotedOption(event.optionIndex);
+                break;
+            }
+        }
+
+        if (pendingVote) {
+            handleVote(pendingVote);
+        }
+    }, [address, events]);
 
     useWatchContractEvent({
         address: voting.CONTRACT_ADDRESS as Address,
@@ -156,24 +187,19 @@ export const Home: React.FC = () => {
                 const optionIndex = Number(log.args.optionIndex);
 
                 if (pollIndex === voting.CONTRACT_POLL) {
-                    const newVotes = { ...(votes ?? {}) };
-                    newVotes[optionIndex] = (newVotes[optionIndex] ?? 0) + 1;
-                    setVotes(newVotes);
+                    setVotes((prev) => ({
+                        ...prev,
+                        [optionIndex]: (prev?.[optionIndex] ?? 0) + 1
+                    }));
 
                     const event = {
                         timestamp: Number(log.blockTimestamp) * 1000,
                         optionIndex: optionIndex,
-                        address: log.address,
+                        address: log.args.voter,
                     };
                     const newEvents = [...(events ?? [])];
                     newEvents.push(event);
                     setEvents(newEvents);
-
-                    if (address?.toLowerCase() === log.args.voter.toLowerCase()) {
-                        console.log("matches")
-                        setHasVoted(true);
-                        setVotedOption(optionIndex);
-                    }
                 }
             }
         },
@@ -181,21 +207,6 @@ export const Home: React.FC = () => {
             console.error("Error watching contract events:", error);
         },
     });
-
-    const handleVote = (optionIndex: number) => {
-        if (hasVoted) {
-            alert("You have already voted!");
-            return;
-        }
-
-        if (!address) {
-            connectRef?.current?.openModal();
-            return;
-        }
-
-        setCastingVote(true);
-        castVote(voting.CONTRACT_POLL, optionIndex);
-    };
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-purple-600 via-purple-700 to-indigo-800">
@@ -205,7 +216,7 @@ export const Home: React.FC = () => {
                         <div className="text-2xl font-bold text-purple-600">
                             DDD Brisbane
                         </div>
-                        <ConnectWallet />
+                        <ConnectWallet ref={connectRef} />
                     </div>
                 </div>
             </nav>
