@@ -21,7 +21,6 @@ contract VotingTest {
         (address creator,
             string memory title,
             Voting.Option[] memory options,
-            Voting.Vote[] memory votes,
             bool isOpen) = testClass.getPoll(pollIndex);
 
         Assert.equal(0, pollIndex, "Should be first poll");
@@ -32,7 +31,6 @@ contract VotingTest {
         Assert.equal(options[0].description, opts[0].description, "Options must equal");
         Assert.equal(options[1].title, opts[1].title, "Options must equal");
         Assert.equal(options[1].description, opts[1].description, "Options must equal");
-        Assert.equal(votes.length, 0, "Should be no votes");
         Assert.ok(isOpen, "Should be open");
     }
 
@@ -44,11 +42,9 @@ contract VotingTest {
         uint pollIndex = testClass.openPoll("My Poll", opts);
         testClass.castVote(pollIndex, 1);
 
-        (address creator,
-            string memory title,
-            Voting.Option[] memory options,
-            Voting.Vote[] memory votes,
-            bool isOpen) = testClass.getPoll(pollIndex);
+        uint votesCount = testClass.getVotesCount(pollIndex);
+        Assert.equal(votesCount, 1, "Should have one vote");
+        Voting.Vote[] memory votes = testClass.getVotes(pollIndex, 0, 100);
         Assert.equal(votes.length, 1, "Should have one vote");
         Assert.equal(votes[0].voter, address(this), "We should be voter");
         Assert.equal(votes[0].optionIndex, 1, "Should be the option we specified");
