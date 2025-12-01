@@ -72,17 +72,7 @@ export const Home: React.FC = () => {
             description: option["description"],
             lottieUrl: getImage(option["title"]),
         })));
-        setVotes(poll[3].reduce((acc: Record<number, number>, current: { voter: string, optionIndex: number }) => {
-            const optionIndex = Number(current.optionIndex);
-
-            if (!(optionIndex in acc)) {
-                acc[optionIndex] = 0;
-            }
-
-            acc[optionIndex] += 1;
-            return acc;
-        }, {}));
-        setVotingOpen(poll[4]);
+        setVotingOpen(poll[3]);
     }, [isPending, error, poll, title, address]);
 
     const fetchVoteEvents = useCallback(async () => {
@@ -109,12 +99,20 @@ export const Home: React.FC = () => {
             toBlock: currentBlock,
         });
 
-        const events = [];
+        const votes: Record<number, number> = {};
+        const events: VoteEvent[] = [];
 
         for (const event of fetchedLogs) {
             const pollIndex = Number(event.args.pollIndex);
 
             if (pollIndex === voting.CONTRACT_POLL) {
+                const optionIndex = Number(event.args.optionIndex);
+
+                if (!(optionIndex in votes)) {
+                    votes[optionIndex] = 0;
+                }
+
+                votes[optionIndex]++;
                 events.push({
                     timestamp: Number(event.blockTimestamp) * 1000,
                     optionIndex: Number(event.args.optionIndex),
@@ -123,6 +121,7 @@ export const Home: React.FC = () => {
             }
         }
 
+        setVotes(votes);
         setEvents(events);
     }, [publicClient]);
 
