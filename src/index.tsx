@@ -24,7 +24,7 @@ createRoot(document.getElementById("root")!).render(
                 <RainbowKitProvider theme={walletTheme}>
                     <PannaProvider clientId="b955e5ec244957bd248851c32e1647ad"
                                    partnerId="e99b37e4-3cff-4dfd-b5a2-73f68ed33978"
-                                   chainId="4202">
+                                   chainId={`${liskSepoliaConfig.chains[0].id}`}>
                         <BrowserRouter>
                             <Routes>
                                 <Route path="/ddd-brisbane" element={<Home />} />
