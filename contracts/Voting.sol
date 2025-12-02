@@ -7,19 +7,22 @@ contract Voting {
         string description;
     }
 
+    struct Poll {
+        address creator;
+        string title;
+        Option[] options;
+        bool isOpen;
+    }
+
     struct Vote {
         address voter;
         uint optionIndex;
     }
 
-    struct Poll {
-        address creator;
-        string title;
-        Option[] options;
+    struct Votes {
         mapping(address => bool) hasVoted;
         mapping(uint => uint) voteTotals;
         Vote[] votes;
-        bool isOpen;
     }
 
     event PollOpened(uint pollIndex, address creator, string title, Option[] options);
@@ -33,10 +36,13 @@ contract Voting {
     error PollDoesNotExist(uint pollIndex);
     error MustBeCreator(uint pollIndex, address creator);
     error OptionDoesNotExist(uint pollIndex, uint optionIndex);
-    error PollAlreadyClosed(uint pollIndex);
+    error PollNotOpen(uint pollIndex);
     error AlreadyVoted(uint pollIndex, address voter);
 
-    Poll[] private polls;
+    // Storing polls and votes separately and matching by index (should always be same size)
+    // Makes things easier on query side
+    Poll[] private _polls;
+    Votes[] private _votes;
 
     function openPoll(string calldata title, Option[] calldata options) external returns (uint) {
         if (bytes(title).length == 0) {
@@ -62,10 +68,12 @@ contract Voting {
             }
         }
 
-        // Need to push because Poll struct contains a mapping which can only be declared in contract scope
-        polls.push();
-        uint pollIndex = polls.length - 1;
-        Poll storage poll = polls[pollIndex];
+        // Need to push because Poll struct contains a dynamically sized array which can only be declared in contract scope
+        _polls.push();
+        // Same with votes which also includes mapping types
+        _votes.push();
+        uint pollIndex = _polls.length - 1;
+        Poll storage poll = _polls[pollIndex];
         poll.creator = msg.sender;
         poll.title = title;
         poll.isOpen = true;
@@ -82,22 +90,23 @@ contract Voting {
 
     function castVote(uint pollIndex, uint optionIndex) external {
         Poll storage poll = _getPoll(pollIndex);
+        Votes storage votes = _getVotes(pollIndex);
 
         if (optionIndex >= poll.options.length) {
             revert OptionDoesNotExist(pollIndex, optionIndex);
         }
 
         if (!poll.isOpen) {
-            revert PollAlreadyClosed(pollIndex);
+            revert PollNotOpen(pollIndex);
         }
 
-        if (poll.hasVoted[msg.sender]) {
+        if (votes.hasVoted[msg.sender]) {
             revert AlreadyVoted(pollIndex, msg.sender);
         }
 
-        poll.votes.push(Vote(msg.sender, optionIndex));
-        ++poll.voteTotals[optionIndex];
-        poll.hasVoted[msg.sender] = true;
+        votes.votes.push(Vote(msg.sender, optionIndex));
+        ++votes.voteTotals[optionIndex];
+        votes.hasVoted[msg.sender] = true;
         emit VoteCasted(pollIndex, msg.sender, optionIndex);
     }
 
@@ -109,21 +118,42 @@ contract Voting {
         }
 
         if (!poll.isOpen) {
-            revert PollAlreadyClosed(pollIndex);
+            revert PollNotOpen(pollIndex);
         }
 
         poll.isOpen = false;
         emit PollClosed(pollIndex);
     }
 
-    function getPoll(uint pollIndex) external view returns (address creator, string memory title, Option[] memory options, bool isOpen) {
-        Poll storage poll = _getPoll(pollIndex);
-        return (poll.creator, poll.title, poll.options, poll.isOpen);
+    function getPoll(uint pollIndex) external view returns (Poll memory) {
+        return _getPoll(pollIndex);
+    }
+
+    function getPolls(uint offset, uint limit) external view returns (Poll[] memory) {
+        uint total = _polls.length;
+
+        if (offset >= total) {
+            return new Poll[](0);
+        }
+
+        uint remaining = total - offset;
+        uint count = remaining < limit ? remaining : limit;
+        Poll[] memory result = new Poll[](count);
+
+        for (uint i = 0; i < count; ++i) {
+            result[i] = _polls[offset + i];
+        }
+
+        return result;
+    }
+
+    function getPollsCount() external view returns (uint) {
+        return _polls.length;
     }
 
     function getVotes(uint pollIndex, uint offset, uint limit) external view returns (Vote[] memory) {
-        Poll storage poll = _getPoll(pollIndex);
-        uint total = poll.votes.length;
+        Votes storage votes = _getVotes(pollIndex);
+        uint total = votes.votes.length;
 
         if (offset >= total) {
             return new Vote[](0);
@@ -131,36 +161,45 @@ contract Voting {
 
         uint remaining = total - offset;
         uint count = remaining < limit ? remaining : limit;
-        Vote[] memory votes = new Vote[](count);
+        Vote[] memory result = new Vote[](count);
 
         for (uint i = 0; i < count; ++i) {
-            votes[i] = poll.votes[offset + i];
+            result[i] = votes.votes[offset + i];
         }
 
-        return votes;
+        return result;
     }
 
     function getVotesCount(uint pollIndex) external view returns (uint) {
-        Poll storage poll = _getPoll(pollIndex);
-        return poll.votes.length;
+        Votes storage votes = _getVotes(pollIndex);
+        return votes.votes.length;
     }
 
     function getVotesTotal(uint pollIndex) external view returns (uint[] memory) {
         Poll storage poll = _getPoll(pollIndex);
+        Votes storage votes = _getVotes(pollIndex);
         uint[] memory totals = new uint[](poll.options.length);
 
         for (uint i = 0; i < poll.options.length; ++i) {
-            totals[i] = poll.voteTotals[i];
+            totals[i] = votes.voteTotals[i];
         }
 
         return totals;
     }
 
     function _getPoll(uint pollIndex) private view returns (Poll storage) {
-        if (pollIndex >= polls.length) {
+        if (pollIndex >= _polls.length) {
             revert PollDoesNotExist(pollIndex);
         }
 
-        return polls[pollIndex];
+        return _polls[pollIndex];
+    }
+
+    function _getVotes(uint pollIndex) private view returns (Votes storage) {
+        if (pollIndex >= _votes.length) {
+            revert PollDoesNotExist(pollIndex);
+        }
+
+        return _votes[pollIndex];
     }
 }

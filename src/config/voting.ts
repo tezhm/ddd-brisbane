@@ -81,7 +81,7 @@ export const voting = {
                     "type": "uint256"
                 }
             ],
-            "name": "PollAlreadyClosed",
+            "name": "PollDoesNotExist",
             "type": "error"
         },
         {
@@ -92,7 +92,7 @@ export const voting = {
                     "type": "uint256"
                 }
             ],
-            "name": "PollDoesNotExist",
+            "name": "PollNotOpen",
             "type": "error"
         },
         {
@@ -223,36 +223,114 @@ export const voting = {
             "name": "getPoll",
             "outputs": [
                 {
-                    "internalType": "address",
-                    "name": "creator",
-                    "type": "address"
-                },
-                {
-                    "internalType": "string",
-                    "name": "title",
-                    "type": "string"
-                },
-                {
                     "components": [
+                        {
+                            "internalType": "address",
+                            "name": "creator",
+                            "type": "address"
+                        },
                         {
                             "internalType": "string",
                             "name": "title",
                             "type": "string"
                         },
                         {
-                            "internalType": "string",
-                            "name": "description",
-                            "type": "string"
+                            "components": [
+                                {
+                                    "internalType": "string",
+                                    "name": "title",
+                                    "type": "string"
+                                },
+                                {
+                                    "internalType": "string",
+                                    "name": "description",
+                                    "type": "string"
+                                }
+                            ],
+                            "internalType": "struct Voting.Option[]",
+                            "name": "options",
+                            "type": "tuple[]"
+                        },
+                        {
+                            "internalType": "bool",
+                            "name": "isOpen",
+                            "type": "bool"
                         }
                     ],
-                    "internalType": "struct Voting.Option[]",
-                    "name": "options",
-                    "type": "tuple[]"
+                    "internalType": "struct Voting.Poll",
+                    "name": "",
+                    "type": "tuple"
+                }
+            ],
+            "stateMutability": "view",
+            "type": "function"
+        },
+        {
+            "inputs": [
+                {
+                    "internalType": "uint256",
+                    "name": "offset",
+                    "type": "uint256"
                 },
                 {
-                    "internalType": "bool",
-                    "name": "isOpen",
-                    "type": "bool"
+                    "internalType": "uint256",
+                    "name": "limit",
+                    "type": "uint256"
+                }
+            ],
+            "name": "getPolls",
+            "outputs": [
+                {
+                    "components": [
+                        {
+                            "internalType": "address",
+                            "name": "creator",
+                            "type": "address"
+                        },
+                        {
+                            "internalType": "string",
+                            "name": "title",
+                            "type": "string"
+                        },
+                        {
+                            "components": [
+                                {
+                                    "internalType": "string",
+                                    "name": "title",
+                                    "type": "string"
+                                },
+                                {
+                                    "internalType": "string",
+                                    "name": "description",
+                                    "type": "string"
+                                }
+                            ],
+                            "internalType": "struct Voting.Option[]",
+                            "name": "options",
+                            "type": "tuple[]"
+                        },
+                        {
+                            "internalType": "bool",
+                            "name": "isOpen",
+                            "type": "bool"
+                        }
+                    ],
+                    "internalType": "struct Voting.Poll[]",
+                    "name": "",
+                    "type": "tuple[]"
+                }
+            ],
+            "stateMutability": "view",
+            "type": "function"
+        },
+        {
+            "inputs": [],
+            "name": "getPollsCount",
+            "outputs": [
+                {
+                    "internalType": "uint256",
+                    "name": "",
+                    "type": "uint256"
                 }
             ],
             "stateMutability": "view",
