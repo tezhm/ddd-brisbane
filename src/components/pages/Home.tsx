@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react"
-import { getAbiItem } from "viem";
+import { type AbiEvent, getAbiItem } from "viem";
 import { useReadContract, usePublicClient, useWatchContractEvent } from "wagmi";
 import AOS from "aos";
 import "aos/dist/aos.css";
@@ -13,7 +13,7 @@ import { type Option, VotingCard } from "../elements/VotingCard.tsx";
 import { type VoteEvent, VotingTimeline } from "../elements/VotingTimeline.tsx";
 import { useWallet } from "../hooks/Wallet.tsx";
 import { TransactionDialog } from "../elements/TransactionDialog.tsx";
-import { type Address, TransactionState } from "../elements/types.ts";
+import { type Address, type Poll, TransactionState } from "../elements/types.ts";
 
 export const Home: React.FC = () => {
     const [title, setTitle] = useState<string|null>(null);
@@ -28,7 +28,7 @@ export const Home: React.FC = () => {
     const connectRef = useRef<ConnectWalletHandle>(null);
     const publicClient = usePublicClient();
     const { address, castVote, castVoteState } = useWallet();
-    const { data: poll, isPending, error } = useReadContract({
+    const { data: getPollResult, isPending, error } = useReadContract({
         address: voting.CONTRACT_ADDRESS as Address,
         abi: voting.CONTRACT_ABI,
         functionName: "getPoll",
@@ -61,19 +61,20 @@ export const Home: React.FC = () => {
     };
 
     useEffect(() => {
-        if (isPending || error || !poll || title) {
+        if (isPending || error || !getPollResult || title) {
             return;
         }
 
-        setTitle(poll[1] as string);
-        setOptions(poll[2].map((option, index) => ({
+        const poll = getPollResult as Poll;
+        setTitle(poll.title as string);
+        setOptions(poll.options.map((option, index) => ({
             optionIndex: index,
             title: option["title"],
             description: option["description"],
             lottieUrl: getImage(option["title"]),
         })));
-        setVotingOpen(poll[3]);
-    }, [isPending, error, poll, title, address]);
+        setVotingOpen(poll.isOpen);
+    }, [isPending, error, getPollResult, title, address]);
 
     const fetchVoteEvents = useCallback(async () => {
         if (!publicClient) {
@@ -94,7 +95,7 @@ export const Home: React.FC = () => {
 
         const fetchedLogs = await publicClient.getLogs({
             address: voting.CONTRACT_ADDRESS as Address,
-            event: abi,
+            event: abi as AbiEvent,
             fromBlock: fromBlock,
             toBlock: currentBlock,
         });
@@ -103,10 +104,11 @@ export const Home: React.FC = () => {
         const events: VoteEvent[] = [];
 
         for (const event of fetchedLogs) {
-            const pollIndex = Number(event.args.pollIndex);
+            const voteCasted = event.args as Record<string, Address|bigint>;
+            const pollIndex = Number(voteCasted["pollIndex"]);
 
             if (pollIndex === voting.CONTRACT_POLL) {
-                const optionIndex = Number(event.args.optionIndex);
+                const optionIndex = Number(voteCasted["optionIndex"]);
 
                 if (!(optionIndex in votes)) {
                     votes[optionIndex] = 0;
@@ -115,8 +117,8 @@ export const Home: React.FC = () => {
                 votes[optionIndex]++;
                 events.push({
                     timestamp: Number(event.blockTimestamp) * 1000,
-                    optionIndex: Number(event.args.optionIndex),
-                    address: event.args.voter,
+                    optionIndex: Number(voteCasted["optionIndex"]),
+                    address: voteCasted["voter"] as Address,
                 });
             }
         }
@@ -177,13 +179,12 @@ export const Home: React.FC = () => {
         address: voting.CONTRACT_ADDRESS as Address,
         abi: voting.CONTRACT_ABI,
         eventName: "VoteCasted",
-        args: {
-            pollId: voting.CONTRACT_POLL,
-        },
+        args: { pollId: voting.CONTRACT_POLL },
         onLogs(logs) {
             for (const log of logs) {
-                const pollIndex = Number(log.args.pollIndex);
-                const optionIndex = Number(log.args.optionIndex);
+                const voteCasted = log.args as Record<string, Address|bigint>;
+                const pollIndex = Number(voteCasted["pollIndex"]);
+                const optionIndex = Number(voteCasted["optionIndex"]);
 
                 if (pollIndex === voting.CONTRACT_POLL) {
                     setVotes((prev) => ({
@@ -194,7 +195,7 @@ export const Home: React.FC = () => {
                     const event = {
                         timestamp: Number(log.blockTimestamp) * 1000,
                         optionIndex: optionIndex,
-                        address: log.args.voter,
+                        address: voteCasted["voter"] as Address,
                     };
                     const newEvents = [...(events ?? [])];
                     newEvents.push(event);
